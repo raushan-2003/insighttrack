@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>InsightTrack - Live Feedback Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right, #74ebd5, #ACB6E5);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        h2 {
+            margin-top: 40px;
+            font-size: 32px;
+            color: #333;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        #setup {
+            margin-top: 30px;
+        }
+
+        input[type="text"] {
+            padding: 12px;
+            font-size: 18px;
+            border: none;
+            border-radius: 6px;
+            margin-right: 10px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            background-color: #333;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #444;
+        }
+
+        #sessionTitle {
+            margin-top: 20px;
+            font-size: 24px;
+            color: #222;
+        }
+
+        #emojiContainer {
+            display: none;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 40px;
+            max-width: 800px;
+        }
+
+        .emoji-card {
+            background-color: white;
+            padding: 20px;
+            border-radius: 12px;
+            width: 100px;
+            font-size: 36px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            transition: transform 0.3s ease;
+        }
+
+        .emoji-card:hover {
+            transform: scale(1.05);
+        }
+
+        .count {
+            font-size: 20px;
+            margin-top: 8px;
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>InsightTrack: Live Emotion Feedback</h2>
+
+    <div id="setup">
+        <input type="text" id="sessionInput" placeholder="Enter Session Code" />
+        <button onclick="startDashboard()">Start Dashboard</button>
+    </div>
+
+    <h3 id="sessionTitle"></h3>
+    <div id="emojiContainer"></div>
+
+    <script>
+        const emojiMap = {
+            "😴": "sleepy",
+            "😂": "laugh",
+            "😲": "surprised",
+            "😡": "angry",
+            "😊": "happy",
+            "😐": "neutral",
+            "😢": "sad",
+            "🤔": "thinking",
+            "❤️": "love",
+            "🙄": "annoyed"
+        };
+
+        function startDashboard() {
+            const sessionCode = document.getElementById("sessionInput").value.trim();
+            if (!sessionCode) {
+                alert("Please enter a valid session code");
+                return;
+            }
+
+            document.getElementById("sessionTitle").textContent = "Live Session: " + sessionCode;
+            document.getElementById("emojiContainer").style.display = "flex";
+            document.getElementById("setup").style.display = "none";
+
+            const container = document.getElementById("emojiContainer");
+            container.innerHTML = ""; // Clear old
+
+            for (let emoji in emojiMap) {
+                const id = "count-" + emojiMap[emoji];
+                const card = document.createElement("div");
+                card.className = "emoji-card";
+                card.innerHTML = `${emoji}<div class="count" id="${id}">0</div>`;
+                container.appendChild(card);
+            }
+
+            const socket = new SockJS("http://localhost:8080/ws-feedback");
+            const stompClient = Stomp.over(socket);
+            stompClient.debug = null;
+
+            // Load existing analytics (if available)
+            fetch(`http://localhost:8080/api/analytics/${sessionCode}`)
+                .then(res => res.json())
+                .then(data => {
+                    const counts = data.emotionCount || {};
+                    for (let emoji in emojiMap) {
+                        const id = "count-" + emojiMap[emoji];
+                        document.getElementById(id).textContent = counts[emoji] || 0;
+                    }
+                });
+
+            // Subscribe for live updates
+            stompClient.connect({}, function () {
+                stompClient.subscribe(`/topic/analytics/${sessionCode}`, function (message) {
+                    const data = JSON.parse(message.body);
+                    const counts = data.emotionCount;
+                    for (let emoji in emojiMap) {
+                        const id = "count-" + emojiMap[emoji];
+                        document.getElementById(id).textContent = counts[emoji] || 0;
+                    }
+                });
+            });
+        }
+    </script>
+
+</body>
+
+</html>

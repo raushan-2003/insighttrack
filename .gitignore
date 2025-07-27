@@ -1,0 +1,24 @@
+# Java
+/target
+*.class
+*.jar
+*.war
+*.log
+*.iml
+
+# Maven
+.mvn/
+!mvnw
+!mvnw.cmd
+
+# IDEs
+.idea/
+*.iws
+*.ipr
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+src/main/resources/application.properties

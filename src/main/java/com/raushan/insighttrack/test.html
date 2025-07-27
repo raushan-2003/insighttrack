@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WebSocket Feedback Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+  <h2>Listening to /topic/feedback/VGM7D2</h2>
+  <pre id="output">Waiting for feedback...</pre>
+
+  <script>
+    const socket = new SockJS('http://localhost:8080/ws-feedback');
+    const stompClient = Stomp.over(socket);
+    stompClient.debug = null;
+
+    stompClient.connect({}, function (frame) {
+      console.log("✅ Connected: " + frame);
+      stompClient.subscribe('/topic/feedback/VGM7D2', function (message) {
+        document.getElementById('output').textContent = message.body;
+        console.log("📩 Received: " + message.body);
+      });
+    });
+  </script>
+</body>
+</html>
